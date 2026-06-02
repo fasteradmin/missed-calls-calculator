@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gemiste Oproepen Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+      background: transparent;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px 48px;
+    }
+
+    .outer {
+      max-width: 380px;
+      width: 100%;
+      overflow-x: hidden;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: #ffffff;
+      border-radius: 20px;
+      border: 1px solid #e5e5ea;
+      width: 100%;
+    }
+
+    #rp { display: none; margin-top: 16px; }
+    #rp.visible { display: flex; flex-direction: column; animation: fadeUp 0.3s cubic-bezier(0.25,0.46,0.45,0.94) both; }
+
+    /* ── TOP BAR ── */
+    .top-bar {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dots {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #d1d1d6;
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .dot.filled { background: #00A0FF; }
+    .dot.active { background: #00A0FF; transform: scale(1.35); }
+
+
+
+    /* ── QUESTION AREA ── */
+    .q-area {
+      padding: 8px 28px 0;
+      flex: 1;
+    }
+
+    .step-panel {
+      display: none;
+      flex-direction: column;
+    }
+    .step-panel.active {
+      display: flex;
+      animation: fadeUp 0.25s cubic-bezier(0.25,0.46,0.45,0.94) both;
+    }
+    .step-panel.instant {
+      animation: none;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── REACTION BLOCK ── */
+    .reaction {
+      text-align: center;
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+      border-bottom: 0.5px solid #e5e5ea;
+    }
+    .reaction-label {
+      font-size: 14px;
+      color: #8e8e93;
+      margin-bottom: 4px;
+    }
+    .reaction-num {
+      font-size: 72px;
+      font-weight: 700;
+      color: #1c1c1e;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .reaction-unit {
+      font-size: 15px;
+      color: #8e8e93;
+      margin-top: 4px;
+    }
+
+    /* ── QUESTION ── */
+    .q-text {
+      font-size: 28px;
+      font-weight: 600;
+      color: #1c1c1e;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+    .q-hint {
+      font-size: 13px;
+      color: #8e8e93;
+      letter-spacing: 0.01em;
+      line-height: 1.55;
+      margin-bottom: 32px;
+    }
+
+    /* ── INPUT ROW ── */
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .num-box {
+      display: inline-flex;
+      align-items: center;
+      background: #f2f2f7;
+      border-radius: 8px;
+      border: 1px solid #f0f0f0;
+      padding: 10px 14px;
+    }
+    .num-prefix {
+      font-size: 22px;
+      font-weight: 500;
+      color: #1c1c1e;
+      letter-spacing: -0.01em;
+      margin-right: 2px;
+    }
+    .num-input {
+      font-size: 22px;
+      font-weight: 500;
+      color: #1c1c1e;
+      letter-spacing: -0.01em;
+      background: transparent;
+      border: none;
+      outline: none;
+      width: 72px;
+      -moz-appearance: textfield;
+      font-family: inherit;
+    }
+    .num-input::-webkit-outer-spin-button,
+    .num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .unit-lbl {
+      font-size: 18px;
+      color: #8e8e93;
+      font-family: inherit;
+    }
+
+    /* ── BOTTOM BAR ── */
+    .bottom-bar {
+      padding: 20px 28px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .back-btn {
+      font-size: 14px;
+      color: #8e8e93;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-family: inherit;
+      visibility: hidden;
+      pointer-events: none;
+    }
+    .back-btn.show {
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .back-btn:hover { color: #3c3c43; }
+
+    .next-btn {
+      background: #00A0FF;
+      color: #ffffff;
+      border: none;
+      border-radius: 14px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      min-height: 44px;
+      font-family: inherit;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .next-btn:hover { opacity: 0.88; }
+    .next-btn:active { transform: scale(0.97); }
+
+    /* ── RESULT CARD ── */
+    .result-screen {
+      padding: 20px 28px 0;
+      overflow-y: auto;
+    }
+    .result-eyebrow {
+      font-size: 13px;
+      color: #8e8e93;
+      letter-spacing: 0.02em;
+      margin-bottom: 10px;
+    }
+    .result-num {
+      font-size: 76px;
+      font-weight: 700;
+      color: #1c1c1e;
+      line-height: 1;
+      letter-spacing: -0.03em;
+    }
+    .yearly-badge {
+      display: inline-block;
+      background: #fdecea;
+      color: #c0392b;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 20px;
+      padding: 4px 12px;
+      margin-top: 10px;
+    }
+    .result-ctx {
+      font-size: 14px;
+      color: #8e8e93;
+      line-height: 1.6;
+      margin-top: 14px;
+    }
+    .detail-rows {
+      margin-top: 36px;
+      border-top: 0.5px solid #e5e5ea;
+    }
+    .d-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 10px 0;
+      border-bottom: 0.5px solid #e5e5ea;
+    }
+    .d-row:last-child { border-bottom: none; }
+    .d-lbl { font-size: 13px; color: #8e8e93; }
+    .d-val { font-size: 13px; font-weight: 500; color: #3c3c43; }
+
+
+
+    .edit-pills {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 20px;
+      text-align: left;
+    }
+    .e-pill {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid #e5e5ea;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #3c3c43;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+    }
+    .e-pill:hover { background: #f9f9f9; }
+    .e-pill-icon { font-size: 12px; color: #8e8e93; }
+
+    .disclaimer {
+      font-size: 11px;
+      color: #c7c7cc;
+      line-height: 1.65;
+      margin-top: 20px;
+    }
+
+    .result-bottom {
+      padding: 20px 28px 36px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .scroll-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      color: #c7c7cc;
+      animation: bounce 1.8s ease-in-out infinite;
+    }
+    .scroll-arrow svg {
+      width: 20px;
+      height: 20px;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(5px); }
+    }
+
+    .restart-btn {
+      display: block;
+      width: 100%;
+      text-align: center;
+      font-size: 13px;
+      color: #8e8e93;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 4px 0;
+    }
+    .restart-btn:hover { color: #3c3c43; }
+  </style>
+</head>
+<body>
+<div class="outer" id="outer">
+
+  <!-- INPUT CARD -->
+  <div class="card" id="ip">
+    <div class="top-bar">
+      <div class="dots" id="dots">
+        <div class="dot active" id="d1"></div>
+        <div class="dot" id="d2"></div>
+        <div class="dot" id="d3"></div>
+        <div class="dot" id="d4"></div>
+        <div class="dot" id="d5"></div>
+      </div>
+    </div>
+
+    <div class="q-area" id="q-area">
+
+      <!-- STEP 1 -->
+      <div class="step-panel active" id="sp1">
+        <p class="q-text">Hoeveel dagen per maand zijn jullie open?</p>
+        <p class="q-hint">Inclusief zaterdagen, exclusief vaste sluitingsdagen.</p>
+        <div class="input-row">
+          <div class="num-box">
+            <input class="num-input" type="number" id="v1" value="25" min="1" max="31" inputmode="numeric" />
+          </div>
+          <span class="unit-lbl">dagen</span>
+        </div>
+      </div>
+
+      <!-- STEP 2 -->
+      <div class="step-panel" id="sp2">
+        <p class="q-text">Hoeveel oproepen missen jullie gemiddeld per dag?</p>
+        <p class="q-hint">Schat een gemiddelde over drukke en rustige dagen.</p>
+        <div class="input-row">
+          <div class="num-box">
+            <input class="num-input" type="number" id="v2" value="5" min="1" max="100" inputmode="numeric" />
+          </div>
+          <span class="unit-lbl">per dag</span>
+        </div>
+      </div>
+
+      <!-- STEP 3 -->
+      <div class="step-panel" id="sp3">
+        <div class="reaction">
+          <p class="reaction-label">Gemiste momenten per maand</p>
+          <p class="reaction-num" id="r-total">—</p>
+          <p class="reaction-unit">per maand</p>
+        </div>
+        <p class="q-text">Hoeveel procent zijn nieuwe klanten of willen boeken?</p>
+        <p class="q-hint">Branchegemiddelde: 50% — de rest zijn nabehandelingen of bestaande klanten.</p>
+        <div class="input-row">
+          <div class="num-box">
+            <input class="num-input" type="number" id="v3" value="50" min="1" max="100" inputmode="numeric" style="width:56px" />
+          </div>
+          <span class="unit-lbl">%</span>
+        </div>
+      </div>
+
+      <!-- STEP 4 -->
+      <div class="step-panel" id="sp4">
+        <div class="reaction">
+          <p class="reaction-label">Serieuze boekingskansen per maand</p>
+          <p class="reaction-num" id="r-booking">—</p>
+          <p class="reaction-unit">per maand</p>
+        </div>
+        <p class="q-text">Hoeveel procent bereiken jullie uiteindelijk niet meer?</p>
+        <p class="q-hint">Gemiddeld 18% — al ergens anders geboekt of reageert niet meer.</p>
+        <div class="input-row">
+          <div class="num-box">
+            <input class="num-input" type="number" id="v4" value="18" min="1" max="100" inputmode="numeric" style="width:56px" />
+          </div>
+          <span class="unit-lbl">%</span>
+        </div>
+      </div>
+
+      <!-- STEP 5 -->
+      <div class="step-panel" id="sp5">
+        <div class="reaction">
+          <p class="reaction-label">Klanten die verdwijnen per maand</p>
+          <p class="reaction-num" id="r-lost">—</p>
+          <p class="reaction-unit">per maand</p>
+        </div>
+        <p class="q-text">Wat is de gemiddelde klantwaarde over meerdere sessies?</p>
+        <p class="q-hint">Wat besteedt een klant gemiddeld per jaar — niet alleen de eerste afspraak.</p>
+        <div class="input-row">
+          <div class="num-box">
+            <span class="num-prefix">€</span>
+            <input class="num-input" type="number" id="v5" value="300" min="1" inputmode="numeric" style="width:88px" />
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /q-area -->
+
+    <div class="bottom-bar">
+      <button class="back-btn" id="back-btn" onclick="goBack()">‹ Terug</button>
+      <button class="next-btn" id="next-btn" onclick="handleNext()">Volgende</button>
+    </div>
+  </div><!-- /ip -->
+
+  <!-- RESULT CARD -->
+  <div class="card" id="rp">
+    <div class="result-screen" style="text-align:center;">
+      <p class="result-eyebrow">Potentiële omzet die maandelijks verdwijnt</p>
+      <p class="result-num" id="res-monthly">€0</p>
+      <span class="yearly-badge" id="res-yearly">€0 op jaarbasis</span>
+      <p class="result-ctx" id="res-ctx"></p>
+      <div class="detail-rows" style="text-align:left;">
+        <div class="d-row"><span class="d-lbl">Gemiste momenten / maand</span><span class="d-val" id="dr1">—</span></div>
+        <div class="d-row"><span class="d-lbl">Serieuze boekingskansen</span><span class="d-val" id="dr2">—</span></div>
+        <div class="d-row"><span class="d-lbl">Verdwenen klanten / maand</span><span class="d-val" id="dr3">—</span></div>
+        <div class="d-row"><span class="d-lbl">Gemiddelde klantwaarde</span><span class="d-val" id="dr4">—</span></div>
+      </div>
+      <div class="edit-pills" id="edit-pills"></div>
+      <p class="disclaimer">Conservatieve schatting op basis van jullie eigen invoer en branchegemiddelden. De werkelijke impact kan hoger liggen.</p>
+    </div>
+    <div class="result-bottom">
+      <div class="scroll-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+      <button class="restart-btn" onclick="restart()">Opnieuw invullen</button>
+    </div>
+  </div><!-- /rp -->
+
+</div><!-- /outer -->
+
+<script>
+  var step = 1;
+  var stepHistory = [1];
+  var vals = {};
+  var pillData = {};
+
+  var LABELS = {1:'Open dagen', 2:'Oproepen/dag', 3:'Boekingsintentie', 4:'Niet bereikt', 5:'Klantwaarde'};
+  var DEFAULTS = {v1:25, v2:5, v3:50, v4:18, v5:300};
+
+  function fmt(n) {
+    return Math.round(n).toLocaleString('nl-NL');
+  }
+
+  function updateDots(s) {
+    for (var i = 1; i <= 5; i++) {
+      var d = document.getElementById('d' + i);
+      d.className = 'dot';
+      if (i < s) { d.classList.add('filled'); }
+      else if (i === s) { d.classList.add('filled'); d.classList.add('active'); }
+    }
+  }
+
+  function updateBack() {
+    var btn = document.getElementById('back-btn');
+    if (stepHistory.length > 1) {
+      btn.classList.add('show');
+    } else {
+      btn.classList.remove('show');
+    }
+  }
+
+  function addPill(sn, val) {
+    pillData[sn] = val;
+  }
+
+  function clearPillsFrom(sn) {
+    for (var i = sn; i <= 5; i++) {
+      delete pillData[i];
+    }
+  }
+
+  function restorePillsBefore(sn) {
+  }
+
+  function showStep(sn, animate) {
+    document.querySelectorAll('.step-panel').forEach(function(el) {
+      el.classList.remove('active', 'instant');
+    });
+    var sp = document.getElementById('sp' + sn);
+    if (!animate) sp.classList.add('instant');
+    sp.classList.add('active');
+    step = sn;
+    stepHistory.push(sn);
+    updateDots(sn);
+    updateBack();
+    var btn = document.getElementById('next-btn');
+    btn.textContent = sn === 5 ? 'Bereken resultaat' : 'Volgende';
+    setTimeout(function() {
+      var inp = sp.querySelector('.num-input');
+      if (inp) inp.focus();
+    }, 60);
+  }
+
+  function jumpTo(sn) {
+    clearPillsFrom(sn);
+    restorePillsBefore(sn);
+    showStep(sn, false);
+  }
+
+  function goBack() {
+    if (stepHistory.length <= 1) return;
+    stepHistory.pop();
+    var prev = stepHistory[stepHistory.length - 1];
+    clearPillsFrom(prev);
+    showStep(prev, false);
+    stepHistory.pop(); // remove the duplicate push from showStep
+    stepHistory.push(prev);
+    updateDots(prev);
+    updateBack();
+  }
+
+  function handleNext() {
+    if (step === 1) {
+      vals.v1 = parseInt(document.getElementById('v1').value) || 25;
+      addPill(1, vals.v1 + ' dagen');
+      showStep(2, true);
+
+    } else if (step === 2) {
+      vals.v2 = parseInt(document.getElementById('v2').value) || 5;
+      vals.total = vals.v1 * vals.v2;
+      addPill(2, vals.v2 + '/dag');
+      document.getElementById('r-total').textContent = fmt(vals.total);
+      showStep(3, true);
+
+    } else if (step === 3) {
+      vals.v3 = parseInt(document.getElementById('v3').value) || 50;
+      vals.booking = vals.total * (vals.v3 / 100);
+      addPill(3, vals.v3 + '%');
+      document.getElementById('r-booking').textContent = fmt(vals.booking);
+      showStep(4, true);
+
+    } else if (step === 4) {
+      vals.v4 = parseInt(document.getElementById('v4').value) || 18;
+      vals.lost = vals.booking * (vals.v4 / 100);
+      addPill(4, vals.v4 + '%');
+      document.getElementById('r-lost').textContent = fmt(vals.lost);
+      showStep(5, true);
+
+    } else if (step === 5) {
+      vals.v5 = parseInt(document.getElementById('v5').value) || 300;
+      vals.monthly = vals.lost * vals.v5;
+      vals.yearly = vals.monthly * 12;
+      addPill(5, '€' + vals.v5);
+      showResult();
+    }
+  }
+
+  function showResult() {
+    document.getElementById('res-monthly').textContent = '€' + fmt(vals.monthly);
+    document.getElementById('res-yearly').textContent = '€' + fmt(vals.yearly) + ' op jaarbasis';
+    document.getElementById('res-ctx').textContent =
+      fmt(vals.lost) + ' potentiële klanten per maand die stilletjes verdwijnen - elk gemiddeld €' + fmt(vals.v5) + ' waard.';
+    document.getElementById('dr1').textContent = fmt(vals.total);
+    document.getElementById('dr2').textContent = fmt(vals.booking);
+    document.getElementById('dr3').textContent = fmt(vals.lost);
+    document.getElementById('dr4').textContent = '€' + fmt(vals.v5);
+
+    var ep = document.getElementById('edit-pills');
+    ep.innerHTML = '';
+    var pillVals = {
+      1: vals.v1 + ' dagen',
+      2: vals.v2 + '/dag',
+      3: vals.v3 + '%',
+      4: vals.v4 + '%',
+      5: '€' + vals.v5
+    };
+    for (var i = 1; i <= 5; i++) {
+      var btn = document.createElement('button');
+      btn.className = 'e-pill';
+      var span = document.createElement('span');
+      span.textContent = LABELS[i] + ': ' + pillVals[i];
+      var icon = document.createElement('span');
+      icon.className = 'e-pill-icon';
+      icon.textContent = '✎';
+      btn.appendChild(span);
+      btn.appendChild(icon);
+      (function(n) {
+        btn.onclick = function() {
+          document.getElementById('rp').classList.remove('visible');
+          document.getElementById('rp').style.display = 'none';
+          document.getElementById('ip').style.display = 'block';
+          clearPillsFrom(n);
+          showStep(n, false);
+          stepHistory.pop();
+          stepHistory.push(n);
+          updateDots(n);
+          updateBack();
+        };
+      })(i);
+      ep.appendChild(btn);
+    }
+
+    document.getElementById('ip').style.display = 'none';
+    var rp = document.getElementById('rp');
+    rp.style.display = 'flex';
+    rp.style.flexDirection = 'column';
+    rp.classList.add('visible');
+  }
+
+  function restart() {
+    vals = {}; pillData = {}; stepHistory = [1]; step = 1;
+    document.querySelectorAll('.step-panel').forEach(function(el) {
+      el.classList.remove('active', 'instant');
+    });
+    var sp1 = document.getElementById('sp1');
+    sp1.classList.add('instant');
+    sp1.classList.add('active');
+    updateDots(1);
+    updateBack();
+    document.getElementById('next-btn').textContent = 'Volgende';
+    Object.keys(DEFAULTS).forEach(function(id) {
+      document.getElementById(id).value = DEFAULTS[id];
+    });
+    document.getElementById('rp').classList.remove('visible');
+    document.getElementById('rp').style.display = 'none';
+    document.getElementById('ip').style.display = 'block';
+    setTimeout(function() { document.getElementById('v1').focus(); }, 80);
+  }
+
+  // Enter key
+  document.querySelectorAll('.num-input').forEach(function(inp) {
+    inp.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); handleNext(); }
+    });
+  });
+
+  // Auto-resize: send height to parent iframe
+  function sendHeight() {
+    var h = document.getElementById('outer') 
+      ? document.getElementById('outer').getBoundingClientRect().height 
+      : document.body.scrollHeight;
+    window.parent.postMessage({ type: 'iframeHeight', height: Math.ceil(h) + 48 }, '*');
+  }
+
+  // Observe DOM changes to catch height shifts
+  var resizeObserver = new ResizeObserver(function() { sendHeight(); });
+  resizeObserver.observe(document.body);
+
+  // Init
+  updateDots(1);
+  setTimeout(function() { document.getElementById('v1').focus(); }, 100);
+  setTimeout(sendHeight, 200);
+</script>
+</body>
+</html>
